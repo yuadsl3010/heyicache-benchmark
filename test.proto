@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package main;
+
+message TestPB {
+    uint64 id = 1;
+    string test_string = 2;
+    repeated string test_strings = 3;
+    map<string, string> test_map = 4;
+    repeated uint64 test_uint64s = 5;
+    bytes test_bytes = 6;
+    repeated float test_floats = 7;
+
+    TestPBChild test_child = 100;
+    repeated TestPBChild test_children = 101;
+}
+
+message TestPBChild {
+    uint64 id = 1;
+    string test_string = 2;
+    repeated string test_strings = 3;
+    map<string, string> test_map = 4;
+    repeated uint64 test_uint64s = 5;
+    bytes test_bytes = 6;
+    repeated float test_floats = 7;
+}
+

@@ -1,0 +1,144 @@
+package main
+
+import (
+	"unsafe"
+
+	"github.com/yuadsl3010/heyicache"
+)
+
+var (
+	HeyiCacheFnStructSizeTestPB = int(unsafe.Sizeof(TestPB{}))
+)
+
+func HeyiCacheFnGetTestPB(bs []byte) interface{} {
+	if len(bs) == 0 || len(bs) < HeyiCacheFnStructSizeTestPB {
+		return nil
+	}
+	
+	return (*TestPB)(unsafe.Pointer(&bs[0]))
+}
+
+func HeyiCacheFnSizeTestPB(value interface{}, isStructPtr bool) int32 {
+	if value == nil {
+		return 0
+	}
+	
+	src, ok := value.(*TestPB)
+	if !ok || src == nil {
+		return 0
+	}
+	
+	var size int32
+	if isStructPtr {
+		size = int32(HeyiCacheFnStructSizeTestPB)
+	}
+	// Id: success
+	// TestString: success
+	// string: foo string
+	size += heyicache.HeyiCacheFnSizeString(src.TestString)
+	// TestStrings: success
+	// slice string: foo []string
+	size += heyicache.HeyiCacheFnSizeSlice(src.TestStrings, heyicache.HeyiCacheFnStructSizestring)
+	for _, item := range src.TestStrings {
+		size += heyicache.HeyiCacheFnSizeString(item)
+	}
+	// TestMap: skip and set nil! map type not supported cause it can't be stored by value, you must use custom serlization to store it if you really want map
+	// skip field: TestMap
+	// TestUint64S: success
+	// slice: foo []int, []byte, etc.
+	size += heyicache.HeyiCacheFnSizeSlice(src.TestUint64S, heyicache.HeyiCacheFnStructSizeuint64)
+	// TestBytes: success
+	// slice: foo []int, []byte, etc.
+	size += heyicache.HeyiCacheFnSizeSlice(src.TestBytes, heyicache.HeyiCacheFnStructSizeuint8)
+	// TestFloats: success
+	// slice: foo []int, []byte, etc.
+	size += heyicache.HeyiCacheFnSizeSlice(src.TestFloats, heyicache.HeyiCacheFnStructSizefloat32)
+	// TestChild: success
+	// struct ptr: foo *Foo
+	size += HeyiCacheFnSizeTestPBChild(src.TestChild, true)
+	// TestChildren: success
+	// slice struct ptr: foo []*Foo
+	size += heyicache.HeyiCacheFnSizeSlice(src.TestChildren, heyicache.HeyiCacheFnStructSizeptr)
+	for _, item := range src.TestChildren {
+		size += HeyiCacheFnSizeTestPBChild(item, true)
+	}
+	return size
+}
+
+func HeyiCacheFnSetTestPB(value interface{}, bs []byte, isStructPtr bool) (interface{}, int32) {
+	if value == nil {
+		return nil, 0
+	}
+	
+	src, ok := value.(*TestPB)
+	if !ok || src == nil {
+		return nil, 0
+	}
+	
+	dst := src
+	var size int32
+	if isStructPtr {
+		size = int32(HeyiCacheFnStructSizeTestPB)
+		srcBytes := (*[1 << 30]byte)(unsafe.Pointer(src))[:size:size]
+		copy(bs, srcBytes)
+		dst = (*TestPB)(unsafe.Pointer(&bs[0]))
+	}
+	// Id: success
+	// TestString: success
+	// string: foo string
+	pTestString, sizeTestString := heyicache.HeyiCacheFnSetString(src.TestString, bs[size:])
+	size += sizeTestString
+	dst.TestString = pTestString
+	// TestStrings: success
+	// slice string: foo []string
+	pTestStrings, sizeTestStrings := heyicache.HeyiCacheFnSetSlice(src.TestStrings, bs[size:], heyicache.HeyiCacheFnStructSizestring)
+	size += sizeTestStrings
+	dst.TestStrings = pTestStrings
+	for idx, item := range src.TestStrings {
+		pTestStrings, sizeTestStrings := heyicache.HeyiCacheFnSetString(item, bs[size:])
+		size += sizeTestStrings
+		dst.TestStrings[idx] = pTestStrings
+	}
+	// TestMap: skip and set nil! map type not supported cause it can't be stored by value, you must use custom serlization to store it if you really want map
+	// skip field: TestMap
+	dst.TestMap = nil
+	// TestUint64S: success
+	// slice: foo []int, []byte, etc.
+	pTestUint64S, sizeTestUint64S := heyicache.HeyiCacheFnSetSlice(src.TestUint64S, bs[size:], heyicache.HeyiCacheFnStructSizeuint64)
+	size += sizeTestUint64S
+	dst.TestUint64S = pTestUint64S
+	// TestBytes: success
+	// slice: foo []int, []byte, etc.
+	pTestBytes, sizeTestBytes := heyicache.HeyiCacheFnSetSlice(src.TestBytes, bs[size:], heyicache.HeyiCacheFnStructSizeuint8)
+	size += sizeTestBytes
+	dst.TestBytes = pTestBytes
+	// TestFloats: success
+	// slice: foo []int, []byte, etc.
+	pTestFloats, sizeTestFloats := heyicache.HeyiCacheFnSetSlice(src.TestFloats, bs[size:], heyicache.HeyiCacheFnStructSizefloat32)
+	size += sizeTestFloats
+	dst.TestFloats = pTestFloats
+	// TestChild: success
+	// struct ptr: foo *Foo
+	pTestChild, sizeTestChild := HeyiCacheFnSetTestPBChild(src.TestChild, bs[size:], true)
+	size += sizeTestChild
+	if pTestChild != nil && sizeTestChild > 0 {
+		dst.TestChild = pTestChild.(*TestPBChild)
+	}
+	
+	// TestChildren: success
+	// slice struct ptr: foo []*Foo
+	pTestChildren, sizeTestChildren := heyicache.HeyiCacheFnSetSlice(src.TestChildren, bs[size:], heyicache.HeyiCacheFnStructSizeptr)
+	size += sizeTestChildren
+	dst.TestChildren = pTestChildren
+	for idx, item := range src.TestChildren {
+		pTestChildren, sizeTestChildren := HeyiCacheFnSetTestPBChild(item, bs[size:], true)
+		size += sizeTestChildren
+		if pTestChildren != nil && sizeTestChildren > 0 {
+			dst.TestChildren[idx] = pTestChildren.(*TestPBChild)
+		}
+		
+	}
+	
+	return dst, size
+}
+
