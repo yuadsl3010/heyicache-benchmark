@@ -56,8 +56,8 @@ func (result *BenchResult) String() string {
 }
 
 func getId(idx, gIdx int) int {
-	return (idx + gIdx*goroutineNum) % maxNum
-	// return idx % maxNum
+	// return (idx + gIdx*goroutineNum) % maxNum
+	return idx % maxNum
 }
 
 func BenchIfc(b *testing.B, ifc TestCacheIfc) {
