@@ -11,7 +11,7 @@ import (
 const (
 	segCount        int32 = 256
 	slotCount       int32 = 256
-	versionCount    int32 = 2
+	versionCount    int32 = 3
 	segmentAndOpVal       = 255
 	minSize         int32 = 32
 )
@@ -54,7 +54,7 @@ func NewCache(config Config) (*Cache, error) {
 type FuncSize func(interface{}, bool) int32
 type FuncSet func(interface{}, []byte, bool) (interface{}, int32)
 
-func (cache *Cache) Set(key []byte, value interface{}, fnSet FuncSet, fnSize FuncSize, expireSeconds int) error {
+func (cache *Cache) set(key []byte, value interface{}, fnSet FuncSet, fnSize FuncSize, expireSeconds int, canRetry bool) error {
 	hashVal := hashFunc(key)
 	segID := hashVal & segmentAndOpVal
 	valueSize := fnSize(value, true)
@@ -74,6 +74,7 @@ func (cache *Cache) Set(key []byte, value interface{}, fnSet FuncSet, fnSize Fun
 	cache.locks[segID].Unlock()
 
 	// write the key and value into the segment
+	// assume fnSet will take lots of time, so we should not hold the lock
 	segment.write(bs, key, value, fnSet)
 
 	// insert the entry into the segment
@@ -82,6 +83,10 @@ func (cache *Cache) Set(key []byte, value interface{}, fnSet FuncSet, fnSize Fun
 		// segment has been expanded, re-allocate space
 		segment.used -= 1
 		cache.locks[segID].Unlock()
+		if canRetry {
+			// give one more chance to retry
+			return cache.set(key, value, fnSet, fnSize, expireSeconds, false)
+		}
 		return ErrSegmentCleaning
 	}
 
@@ -91,10 +96,14 @@ func (cache *Cache) Set(key []byte, value interface{}, fnSet FuncSet, fnSize Fun
 	return err
 }
 
+func (cache *Cache) Set(key []byte, value interface{}, fnSet FuncSet, fnSize FuncSize, expireSeconds int) error {
+	return cache.set(key, value, fnSet, fnSize, expireSeconds, true)
+}
+
 // after Get() is called, the lease will be kept until Done() is called
 type FuncGet func([]byte) interface{}
 
-func (cache *Cache) Get(lease *Lease, key []byte, fnGet FuncGet) (interface{}, error) {
+func (cache *Cache) get(lease *Lease, key []byte, fnGet FuncGet, peak bool) (interface{}, error) {
 	if lease == nil {
 		return nil, ErrNilLeaseCtx
 	}
@@ -103,13 +112,22 @@ func (cache *Cache) Get(lease *Lease, key []byte, fnGet FuncGet) (interface{}, e
 	segID := hashVal & segmentAndOpVal
 	cache.locks[segID].Lock()
 	segment := &cache.segments[segID]
-	value, err := segment.get(key, fnGet, hashVal, false)
+	value, err := segment.get(key, fnGet, hashVal, peak)
 	if err == nil {
 		segment.used += 1
 		lease.keeps[segID][segment.version] += 1
 	}
 	cache.locks[segID].Unlock()
 	return value, err
+}
+
+func (cache *Cache) Get(lease *Lease, key []byte, fnGet FuncGet) (interface{}, error) {
+	return cache.get(lease, key, fnGet, false)
+}
+
+// keep peak feature following the freecache design
+func (cache *Cache) Peek(lease *Lease, key []byte, fnGet FuncGet) (interface{}, error) {
+	return cache.get(lease, key, fnGet, true)
 }
 
 // Del deletes an item in the cache by key and returns true or false if a delete occurred.
@@ -123,10 +141,18 @@ func (cache *Cache) Del(key []byte) (affected bool) {
 }
 
 // statistics
-// EvacuateCount is a metric indicating the number of times an eviction occurred.
-func (cache *Cache) EvacuateCount() (count int64) {
+// EvictionCount is a metric indicating the number of times an eviction occurred.
+func (cache *Cache) EvictionCount() (count int64) {
 	for i := range cache.segments {
-		count += atomic.LoadInt64(&cache.segments[i].totalEvacuate)
+		count += atomic.LoadInt64(&cache.segments[i].totalEviction)
+	}
+	return
+}
+
+// EvictionWaitCount is a metric indicating the number of times an eviction wait occurred.
+func (cache *Cache) EvictionWaitCount() (count int64) {
+	for i := range cache.segments {
+		count += atomic.LoadInt64(&cache.segments[i].totalEvictionWait)
 	}
 	return
 }
