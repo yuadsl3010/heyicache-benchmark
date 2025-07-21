@@ -55,15 +55,20 @@ func (result *BenchResult) String() string {
 	)
 }
 
+func getId(idx, gIdx int) int {
+	return (idx + gIdx*goroutineNum) % maxNum
+	// return idx % maxNum
+}
+
 func BenchIfc(b *testing.B, ifc TestCacheIfc) {
 	result := &BenchResult{}
 	wg := &sync.WaitGroup{}
 	wg.Add(goroutineNum)
 	for g := 0; g < goroutineNum; g++ {
-		go func() {
+		go func(gIdx int) {
 			defer wg.Done()
 			for i := 0; i < b.N; i++ {
-				id := i % maxNum
+				id := getId(i, gIdx)
 				for j := 0; j < checkNum; j++ {
 					if j%checkNum == 0 {
 						// 1th set
@@ -92,7 +97,7 @@ func BenchIfc(b *testing.B, ifc TestCacheIfc) {
 					}
 				}
 			}
-		}()
+		}(g)
 	}
 	wg.Wait()
 }
@@ -102,10 +107,10 @@ func BenchIfcForFreeCacheAndBigCache(b *testing.B, ifc TestCacheIfc) {
 	wg := &sync.WaitGroup{}
 	wg.Add(goroutineNum)
 	for g := 0; g < goroutineNum; g++ {
-		go func() {
+		go func(gIdx int) {
 			defer wg.Done()
 			for i := 0; i < b.N; i++ {
-				id := i % maxNum
+				id := getId(i, gIdx)
 				for j := 0; j < checkNum; j++ {
 					if j%checkNum == 0 {
 						// 1th set
@@ -134,7 +139,7 @@ func BenchIfcForFreeCacheAndBigCache(b *testing.B, ifc TestCacheIfc) {
 					}
 				}
 			}
-		}()
+		}(g)
 	}
 	wg.Wait()
 }
@@ -143,26 +148,26 @@ func BenchIfcForFreeCacheAndBigCache(b *testing.B, ifc TestCacheIfc) {
 func BenchHeyiCache(b *testing.B, heyi *TestHeyiCache) {
 	result := &BenchResult{}
 	wg := &sync.WaitGroup{}
-	goroutineNum = 100
 	wg.Add(goroutineNum)
 	for g := 0; g < goroutineNum; g++ {
-		go func() {
+		go func(gIdx int) {
 			defer wg.Done()
 			for i := 0; i < b.N; i++ {
-				id := i % maxNum
+				id := getId(i, gIdx)
+				ctx := heyicache.NewLeaseCtx(context.Background())
+				leaseCtx := heyicache.GetLeaseCtx(ctx)
+				leaseStoreCache := leaseCtx.GetLease(heyi.Cache)
 				for j := 0; j < checkNum; j++ {
 					if j%checkNum == 0 {
 						// 1th set
 						k, v := NewTestStruct(id)
 						if err := heyi.Set(k, v); err != nil {
+							// panic(err)
 							result.WriteFail++
 						} else {
 							result.WriteSuccess++
 						}
 					} else {
-						ctx := heyicache.NewLeaseCtx(context.Background())
-						leaseCtx := heyicache.GetLeaseCtx(ctx)
-						leaseStoreCache := leaseCtx.GetLease(heyi.Cache)
 						// 2~100th get
 						v, ok := heyi.Get(leaseStoreCache, GetKey(id))
 						if ok {
@@ -178,12 +183,12 @@ func BenchHeyiCache(b *testing.B, heyi *TestHeyiCache) {
 						} else {
 							result.ReadMiss++
 						}
-
-						heyicache.GetLeaseCtx(ctx).Done()
 					}
 				}
+
+				heyicache.GetLeaseCtx(ctx).Done()
 			}
-		}()
+		}(g)
 	}
 	wg.Wait()
 	fmt.Println(result.String())
