@@ -7,9 +7,7 @@ require (
 	github.com/coocood/freecache v1.2.4
 	github.com/gogo/protobuf v1.3.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/yuadsl3010/heyicache v0.0.0-20250719161959-09e61b70661e
+	github.com/yuadsl3010/heyicache v0.0.0-20250721143333-26101b5dff50
 )
 
 require github.com/cespare/xxhash/v2 v2.3.0 // indirect
-
-replace github.com/yuadsl3010/heyicache => ../heyicache

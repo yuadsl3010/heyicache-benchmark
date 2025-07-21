@@ -14,7 +14,6 @@ github.com/gogo/protobuf/proto
 # github.com/patrickmn/go-cache v2.1.0+incompatible
 ## explicit
 github.com/patrickmn/go-cache
-# github.com/yuadsl3010/heyicache v0.0.0-20250719161959-09e61b70661e => ../heyicache
+# github.com/yuadsl3010/heyicache v0.0.0-20250721143333-26101b5dff50
 ## explicit; go 1.23
 github.com/yuadsl3010/heyicache
-# github.com/yuadsl3010/heyicache => ../heyicache
