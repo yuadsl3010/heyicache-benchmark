@@ -1,143 +1,41 @@
-{
-    "Id": 2143,
-    "TestName": "test_name_2143",
-    "TestSkip": "test_skip_2143",
-    "TestChild":
-    {
-        "Id": 2243,
-        "TestName": "struct_child_name_2143",
-        "TestSkip": "struct_child_skip_2143"
-    },
-    "TestChildren":
-    [
-        {
-            "Id": 2343,
-            "TestName": "struct_children_name1_2143",
-            "TestSkip": "struct_children_skip1_2143"
-        },
-        {
-            "Id": 2443,
-            "TestName": "struct_children_name2_2143",
-            "TestSkip": "struct_children_skip2_2143"
-        }
-    ],
-    "TestChildPtr":
-    {
-        "Id": 2543,
-        "TestName": "struct_child_ptr_name_2143",
-        "TestSkip": "struct_child_ptr_skip_2143"
-    },
-    "TestChildrenPtr":
-    [
-        {
-            "Id": 2643,
-            "TestName": "struct_children_ptr_name1_2143",
-            "TestSkip": "struct_children_ptr_skip1_2143"
-        },
-        {
-            "Id": 2743,
-            "TestName": "struct_children_ptr_name2_2143",
-            "TestSkip": "struct_children_ptr_skip2_2143"
-        }
-    ],
-    "TestProto":
-    {
-        "id": 12143,
-        "test_string": "pb_string_2143",
-        "test_strings":
-        [
-            "pb_str1_2143",
-            "pb_str2_2143"
-        ],
-        "test_map":
-        {
-            "pb_key1_2143": "pb_value1_2143",
-            "pb_key2_2143": "pb_value2_2143"
-        },
-        "test_uint64s":
-        [
-            2143000,
-            4286000
-        ],
-        "test_bytes": "cGJfYnl0ZXMxXzIxNDM=",
-        "test_floats":
-        [
-            21644.3,
-            43288.6
-        ],
-        "test_child":
-        {
-            "id": 3143,
-            "test_string": "pb_child_string_2143",
-            "test_strings":
-            [
-                "pb_child_str1_2143",
-                "pb_child_str2_2143",
-                "pb_child_str3_2143"
-            ],
-            "test_map":
-            {
-                "key1_2143": "value1_2143",
-                "key2_2143": "value2_2143"
-            },
-            "test_uint64s":
-            [
-                214300,
-                428600,
-                642900
-            ],
-            "test_bytes": "Ynl0ZXMxXzIxNDM=",
-            "test_floats":
-            [
-                2357.3,
-                4714.6,
-                7071.9
-            ]
-        },
-        "test_children":
-        [
-            {
-                "id": 4143,
-                "test_string": "pb_children_string1_2143",
-                "test_strings":
-                [
-                    "pb_children_str_2143"
-                ],
-                "test_map":
-                {
-                    "child_key_2143": "child_value_2143"
-                },
-                "test_uint64s":
-                [
-                    857200
-                ],
-                "test_bytes": "Y2hpbGRfYnl0ZXNfMjE0Mw==",
-                "test_floats":
-                [
-                    9429.2
-                ]
-            },
-            {
-                "id": 5143,
-                "test_string": "pb_children_string2_2143",
-                "test_strings":
-                [
-                    "pb_children_str2_2143"
-                ],
-                "test_map":
-                {
-                    "child_key2_2143": "child_value2_2143"
-                },
-                "test_uint64s":
-                [
-                    1071500
-                ],
-                "test_bytes": "Y2hpbGRfYnl0ZXMyXzIxNDM=",
-                "test_floats":
-                [
-                    11786.5
-                ]
-            }
-        ]
-    }
+func BenchIfc(b *testing.B, ifc TestCacheIfc) {
+	result := &BenchResult{}
+	wg := &sync.WaitGroup{}
+	wg.Add(goroutineNum)
+	for g := 0; g < goroutineNum; g++ {
+		go func(gIdx int) {
+			defer wg.Done()
+			for i := 0; i < b.N; i++ {
+				id := getId(i, gIdx)
+				for j := 0; j < checkNum; j++ {
+					if j%checkNum == 0 {
+						// 1th set
+						k, v := NewTestStruct(id)
+						if err := ifc.Set(k, v); err != nil {
+							result.WriteFail++
+						} else {
+							result.WriteSuccess++
+						}
+					} else {
+						// 2~100th get
+						v, ok := ifc.Get(GetKey(id))
+						if ok {
+							result.ReadSuccess++
+							if j%checkNum == checkNum-1 {
+								// 100th check
+								if CheckTestStruct(id, v, false) {
+									result.CheckSuccess++
+								} else {
+									result.CheckFail++
+								}
+							}
+						} else {
+							result.ReadMiss++
+						}
+					}
+				}
+			}
+		}(g)
+	}
+	wg.Wait()
 }

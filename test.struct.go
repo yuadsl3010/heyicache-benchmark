@@ -9,6 +9,7 @@ type TestStruct struct {
 	TestChildPtr    *TestStructChild
 	TestChildrenPtr []*TestStructChild
 	TestProto       *TestPB
+	Flag            uint8
 }
 
 type TestStructChild struct {

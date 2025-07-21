@@ -1,125 +1,49 @@
-{
-    "Id": 2143,
-    "TestName": "test_name_2143",
-    "TestSkip": "test_skip_2143",
-    "TestChild":
-    {
-        "Id": 2243,
-        "TestName": "struct_child_name_2143",
-        "TestSkip": "struct_child_skip_2143"
-    },
-    "TestChildren":
-    [
-        {
-            "Id": 2343,
-            "TestName": "struct_children_name1_2209",
-            "TestSkip": "struct_children_skip1_2209"
-        },
-        {
-            "Id": 2443,
-            "TestName": "struct_children_name2_2209",
-            "TestSkip": "struct_children_skip2_2209"
-        }
-    ],
-    "TestChildPtr":
-    {
-        "Id": 2543,
-        "TestName": "struct_child_ptr_name_2143",
-        "TestSkip": "struct_child_ptr_skip_2143"
-    },
-    "TestChildrenPtr":
-    [
-        {
-            "Id": 2643,
-            "TestName": "struct_children_ptr_name1_2143",
-            "TestSkip": "struct_children_ptr_skip1_2143"
-        },
-        {
-            "Id": 2743,
-            "TestName": "struct_children_ptr_name2_2143",
-            "TestSkip": "struct_children_ptr_skip2_2143"
-        }
-    ],
-    "TestProto":
-    {
-        "id": 12143,
-        "test_string": "pb_string_2143",
-        "test_strings":
-        [
-            "pb_str1_2143",
-            "pb_str2_2143"
-        ],
-        "test_uint64s":
-        [
-            2143000,
-            4286000
-        ],
-        "test_bytes": "cGJfYnl0ZXMxXzIxNDM=",
-        "test_floats":
-        [
-            21644.3,
-            43288.6
-        ],
-        "test_child":
-        {
-            "id": 3143,
-            "test_string": "pb_child_string_2143",
-            "test_strings":
-            [
-                "pb_child_str1_2143",
-                "pb_child_str2_2143",
-                "pb_child_str3_2143"
-            ],
-            "test_uint64s":
-            [
-                214300,
-                428600,
-                642900
-            ],
-            "test_bytes": "Ynl0ZXMxXzIxNDM=",
-            "test_floats":
-            [
-                2357.3,
-                4714.6,
-                7071.9
-            ]
-        },
-        "test_children":
-        [
-            {
-                "id": 4143,
-                "test_string": "pb_children_string1_2143",
-                "test_strings":
-                [
-                    "pb_children_str_2143"
-                ],
-                "test_uint64s":
-                [
-                    857200
-                ],
-                "test_bytes": "Y2hpbGRfYnl0ZXNfMjE0Mw==",
-                "test_floats":
-                [
-                    9429.2
-                ]
-            },
-            {
-                "id": 5143,
-                "test_string": "pb_children_string2_2143",
-                "test_strings":
-                [
-                    "pb_children_str2_2143"
-                ],
-                "test_uint64s":
-                [
-                    1071500
-                ],
-                "test_bytes": "Y2hpbGRfYnl0ZXMyXzIxNDM=",
-                "test_floats":
-                [
-                    11786.5
-                ]
-            }
-        ]
-    }
+// only add lease logic for BenchIfc
+func BenchHeyiCache(b *testing.B, heyi *TestHeyiCache) {
+	result := &BenchResult{}
+	wg := &sync.WaitGroup{}
+	wg.Add(goroutineNum)
+	for g := 0; g < goroutineNum; g++ {
+		go func(gIdx int) {
+			defer wg.Done()
+			for i := 0; i < b.N; i++ {
+				id := getId(i, gIdx)
+				ctx := heyicache.NewLeaseCtx(context.Background())
+				leaseCtx := heyicache.GetLeaseCtx(ctx)
+				leaseStoreCache := leaseCtx.GetLease(heyi.Cache)
+				for j := 0; j < checkNum; j++ {
+					if j%checkNum == 0 {
+						// 1th set
+						k, v := NewTestStruct(id)
+						if err := heyi.Set(k, v); err != nil {
+							// panic(err)
+							result.WriteFail++
+						} else {
+							result.WriteSuccess++
+						}
+					} else {
+						// 2~100th get
+						v, ok := heyi.Get(leaseStoreCache, GetKey(id))
+						if ok {
+							result.ReadSuccess++
+							if j%checkNum == checkNum-1 {
+								// 100th check
+								if CheckTestStruct(id, v, false) {
+									result.CheckSuccess++
+								} else {
+									result.CheckFail++
+								}
+							}
+						} else {
+							result.ReadMiss++
+						}
+					}
+				}
+
+				heyicache.GetLeaseCtx(ctx).Done()
+			}
+		}(g)
+	}
+	wg.Wait()
+	fmt.Println(result.String())
 }

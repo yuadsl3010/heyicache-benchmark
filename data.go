@@ -141,6 +141,7 @@ func NewTestStruct(num int) (string, *TestStruct) {
 		TestChildPtr:    testStructChildPtr,
 		TestChildrenPtr: testStructChildrenPtr,
 		TestProto:       testPB,
+		Flag:            uint8(num % 256), // 示例 Flag 字段
 	}
 }
 
