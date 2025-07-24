@@ -41,6 +41,24 @@ func BenchmarkHeyiCache(b *testing.B) {
 	// 设置缓存大小为100MB
 	cache := NewTestHeyiCache(100)
 	BenchHeyiCache(b, cache)
+	totalEviction := cache.Cache.EvictionCount()         // 淘汰次数
+	totalEvictionWait := cache.Cache.EvictionWaitCount() // 淘汰等待次数
+	totalExpired := cache.Cache.ExpiredCount()           // 超时次数
+	overwrites := cache.Cache.OverwriteCount()           // 覆盖次数
+	hitCount := cache.Cache.HitCount()                   // 命中次数
+	missCount := cache.Cache.MissCount()                 // 丢失次数
+	lookupCount := cache.Cache.LookupCount()             // 命中 + 丢失
+	hitRate := cache.Cache.HitRate()                     // 命中 / (命中 + 丢失)
+	entryCount := cache.Cache.EntryCount()               // 总数
+	fmt.Printf("totalEviction: %d\n", totalEviction)
+	fmt.Printf("totalEvictionWait: %d\n", totalEvictionWait)
+	fmt.Printf("totalExpired: %d\n", totalExpired)
+	fmt.Printf("overwrites: %d\n", overwrites)
+	fmt.Printf("hitCount: %d\n", hitCount)
+	fmt.Printf("missCount: %d\n", missCount)
+	fmt.Printf("lookupCount: %d\n", lookupCount)
+	fmt.Printf("hitRate: %.2f\n", hitRate)
+	fmt.Printf("entryCount: %d\n", entryCount)
 }
 
 func PrintString(testNamePtr *string) {

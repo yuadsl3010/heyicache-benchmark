@@ -11,3 +11,5 @@ require (
 )
 
 require github.com/cespare/xxhash/v2 v2.3.0 // indirect
+
+replace github.com/yuadsl3010/heyicache => ../heyicache

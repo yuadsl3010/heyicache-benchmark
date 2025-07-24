@@ -1,3 +1,3 @@
 #!/bin/bash
 
-go test -bench=. -benchmem
+go test -bench=. -benchmem -benchtime=10s

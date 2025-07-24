@@ -11,8 +11,9 @@ type TestHeyiCache struct {
 // NewTestHeyiCache 创建一个新的 TestHeyiCache 实例
 func NewTestHeyiCache(cacheSizeMB int) *TestHeyiCache {
 	c, err := heyicache.NewCache(heyicache.Config{
-		Name:    "TestHeyiCache",
-		MaxSize: int32(cacheSizeMB),
+		Name:               "TestHeyiCache",
+		MaxSize:            int32(cacheSizeMB),
+		MaxSizeBeyondRatio: 0.1,
 	})
 	if err != nil {
 		panic(err)
