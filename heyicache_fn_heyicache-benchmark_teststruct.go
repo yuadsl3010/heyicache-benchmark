@@ -7,18 +7,25 @@ import (
 )
 
 var (
-	HeyiCacheFnStructSizeTestStruct = int(unsafe.Sizeof(TestStruct{}))
+	// pass this ifc_ to heyicache in Get/Set
+	HeyiCacheFnTestStructIfc_ = &HeyiCacheFnTestStructIfc{
+		StructSize: int(unsafe.Sizeof(TestStruct{})),
+	}
 )
 
-func HeyiCacheFnGetTestStruct(bs []byte) interface{} {
-	if len(bs) == 0 || len(bs) < HeyiCacheFnStructSizeTestStruct {
+type HeyiCacheFnTestStructIfc struct {
+	StructSize int
+}
+
+func (ifc *HeyiCacheFnTestStructIfc) Get (bs []byte) interface{} {
+	if len(bs) == 0 || len(bs) < ifc.StructSize {
 		return nil
 	}
 	
 	return (*TestStruct)(unsafe.Pointer(&bs[0]))
 }
 
-func HeyiCacheFnSizeTestStruct(value interface{}, isStructPtr bool) int32 {
+func (ifc *HeyiCacheFnTestStructIfc) Size (value interface{}, isStructPtr bool) int32 {
 	if value == nil {
 		return 0
 	}
@@ -30,7 +37,7 @@ func HeyiCacheFnSizeTestStruct(value interface{}, isStructPtr bool) int32 {
 	
 	var size int32
 	if isStructPtr {
-		size = int32(HeyiCacheFnStructSizeTestStruct)
+		size = int32(ifc.StructSize)
 	}
 	// Id: success
 	// TestName: success
@@ -41,30 +48,30 @@ func HeyiCacheFnSizeTestStruct(value interface{}, isStructPtr bool) int32 {
 	size += heyicache.HeyiCacheFnSizeString(src.TestSkip)
 	// TestChild: success
 	// struct: foo Foo
-	size += HeyiCacheFnSizeTestStructChild(&src.TestChild, false)
+	size += HeyiCacheFnTestStructChildIfc_.Size(&src.TestChild, false)
 	// TestChildren: success
 	// slice struct: foo []Foo
-	size += heyicache.HeyiCacheFnSizeSlice(src.TestChildren, HeyiCacheFnStructSizeTestStructChild)
+	size += heyicache.HeyiCacheFnSizeSlice(src.TestChildren, HeyiCacheFnTestStructChildIfc_.StructSize)
 	for idx := range src.TestChildren {
-		size += HeyiCacheFnSizeTestStructChild(&src.TestChildren[idx], false)
+		size += HeyiCacheFnTestStructChildIfc_.Size(&src.TestChildren[idx], false)
 	}
 	// TestChildPtr: success
 	// struct ptr: foo *Foo
-	size += HeyiCacheFnSizeTestStructChild(src.TestChildPtr, true)
+	size += HeyiCacheFnTestStructChildIfc_.Size(src.TestChildPtr, true)
 	// TestChildrenPtr: success
 	// slice struct ptr: foo []*Foo
 	size += heyicache.HeyiCacheFnSizeSlice(src.TestChildrenPtr, heyicache.HeyiCacheFnStructSizeptr)
 	for _, item := range src.TestChildrenPtr {
-		size += HeyiCacheFnSizeTestStructChild(item, true)
+		size += HeyiCacheFnTestStructChildIfc_.Size(item, true)
 	}
 	// TestProto: success
 	// struct ptr: foo *Foo
-	size += HeyiCacheFnSizeTestPB(src.TestProto, true)
+	size += HeyiCacheFnTestPBIfc_.Size(src.TestProto, true)
 	// Flag: success
 	return size
 }
 
-func HeyiCacheFnSetTestStruct(value interface{}, bs []byte, isStructPtr bool) (interface{}, int32) {
+func (ifc *HeyiCacheFnTestStructIfc) Set (value interface{}, bs []byte, isStructPtr bool) (interface{}, int32) {
 	if value == nil {
 		return nil, 0
 	}
@@ -77,7 +84,7 @@ func HeyiCacheFnSetTestStruct(value interface{}, bs []byte, isStructPtr bool) (i
 	dst := src
 	var size int32
 	if isStructPtr {
-		size = int32(HeyiCacheFnStructSizeTestStruct)
+		size = int32(ifc.StructSize)
 		srcBytes := (*[1 << 30]byte)(unsafe.Pointer(src))[:size:size]
 		copy(bs, srcBytes)
 		dst = (*TestStruct)(unsafe.Pointer(&bs[0]))
@@ -95,20 +102,20 @@ func HeyiCacheFnSetTestStruct(value interface{}, bs []byte, isStructPtr bool) (i
 	dst.TestSkip = pTestSkip
 	// TestChild: success
 	// struct: foo Foo
-	_, sizeTestChild := HeyiCacheFnSetTestStructChild(&dst.TestChild, bs[size:], false)
+	_, sizeTestChild := HeyiCacheFnTestStructChildIfc_.Set(&dst.TestChild, bs[size:], false)
 	size += sizeTestChild
 	// TestChildren: success
 	// slice struct: foo []Foo
-	pTestChildren, sizeTestChildren := heyicache.HeyiCacheFnSetSlice(src.TestChildren, bs[size:], HeyiCacheFnStructSizeTestStructChild)
+	pTestChildren, sizeTestChildren := heyicache.HeyiCacheFnSetSlice(src.TestChildren, bs[size:], HeyiCacheFnTestStructChildIfc_.StructSize)
 	size += sizeTestChildren
 	dst.TestChildren = pTestChildren
 	for idx := range dst.TestChildren {
-		_, sizeTestChildren := HeyiCacheFnSetTestStructChild(&dst.TestChildren[idx], bs[size:], false)
+		_, sizeTestChildren := HeyiCacheFnTestStructChildIfc_.Set(&dst.TestChildren[idx], bs[size:], false)
 		size += sizeTestChildren
 	}
 	// TestChildPtr: success
 	// struct ptr: foo *Foo
-	pTestChildPtr, sizeTestChildPtr := HeyiCacheFnSetTestStructChild(src.TestChildPtr, bs[size:], true)
+	pTestChildPtr, sizeTestChildPtr := HeyiCacheFnTestStructChildIfc_.Set(src.TestChildPtr, bs[size:], true)
 	size += sizeTestChildPtr
 	if pTestChildPtr != nil && sizeTestChildPtr > 0 {
 		dst.TestChildPtr = pTestChildPtr.(*TestStructChild)
@@ -120,7 +127,7 @@ func HeyiCacheFnSetTestStruct(value interface{}, bs []byte, isStructPtr bool) (i
 	size += sizeTestChildrenPtr
 	dst.TestChildrenPtr = pTestChildrenPtr
 	for idx, item := range src.TestChildrenPtr {
-		pTestChildrenPtr, sizeTestChildrenPtr := HeyiCacheFnSetTestStructChild(item, bs[size:], true)
+		pTestChildrenPtr, sizeTestChildrenPtr := HeyiCacheFnTestStructChildIfc_.Set(item, bs[size:], true)
 		size += sizeTestChildrenPtr
 		if pTestChildrenPtr != nil && sizeTestChildrenPtr > 0 {
 			dst.TestChildrenPtr[idx] = pTestChildrenPtr.(*TestStructChild)
@@ -129,7 +136,7 @@ func HeyiCacheFnSetTestStruct(value interface{}, bs []byte, isStructPtr bool) (i
 	}
 	// TestProto: success
 	// struct ptr: foo *Foo
-	pTestProto, sizeTestProto := HeyiCacheFnSetTestPB(src.TestProto, bs[size:], true)
+	pTestProto, sizeTestProto := HeyiCacheFnTestPBIfc_.Set(src.TestProto, bs[size:], true)
 	size += sizeTestProto
 	if pTestProto != nil && sizeTestProto > 0 {
 		dst.TestProto = pTestProto.(*TestPB)

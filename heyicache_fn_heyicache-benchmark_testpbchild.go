@@ -7,18 +7,25 @@ import (
 )
 
 var (
-	HeyiCacheFnStructSizeTestPBChild = int(unsafe.Sizeof(TestPBChild{}))
+	// pass this ifc_ to heyicache in Get/Set
+	HeyiCacheFnTestPBChildIfc_ = &HeyiCacheFnTestPBChildIfc{
+		StructSize: int(unsafe.Sizeof(TestPBChild{})),
+	}
 )
 
-func HeyiCacheFnGetTestPBChild(bs []byte) interface{} {
-	if len(bs) == 0 || len(bs) < HeyiCacheFnStructSizeTestPBChild {
+type HeyiCacheFnTestPBChildIfc struct {
+	StructSize int
+}
+
+func (ifc *HeyiCacheFnTestPBChildIfc) Get (bs []byte) interface{} {
+	if len(bs) == 0 || len(bs) < ifc.StructSize {
 		return nil
 	}
 	
 	return (*TestPBChild)(unsafe.Pointer(&bs[0]))
 }
 
-func HeyiCacheFnSizeTestPBChild(value interface{}, isStructPtr bool) int32 {
+func (ifc *HeyiCacheFnTestPBChildIfc) Size (value interface{}, isStructPtr bool) int32 {
 	if value == nil {
 		return 0
 	}
@@ -30,7 +37,7 @@ func HeyiCacheFnSizeTestPBChild(value interface{}, isStructPtr bool) int32 {
 	
 	var size int32
 	if isStructPtr {
-		size = int32(HeyiCacheFnStructSizeTestPBChild)
+		size = int32(ifc.StructSize)
 	}
 	// Id: success
 	// TestString: success
@@ -56,7 +63,7 @@ func HeyiCacheFnSizeTestPBChild(value interface{}, isStructPtr bool) int32 {
 	return size
 }
 
-func HeyiCacheFnSetTestPBChild(value interface{}, bs []byte, isStructPtr bool) (interface{}, int32) {
+func (ifc *HeyiCacheFnTestPBChildIfc) Set (value interface{}, bs []byte, isStructPtr bool) (interface{}, int32) {
 	if value == nil {
 		return nil, 0
 	}
@@ -69,7 +76,7 @@ func HeyiCacheFnSetTestPBChild(value interface{}, bs []byte, isStructPtr bool) (
 	dst := src
 	var size int32
 	if isStructPtr {
-		size = int32(HeyiCacheFnStructSizeTestPBChild)
+		size = int32(ifc.StructSize)
 		srcBytes := (*[1 << 30]byte)(unsafe.Pointer(src))[:size:size]
 		copy(bs, srcBytes)
 		dst = (*TestPBChild)(unsafe.Pointer(&bs[0]))

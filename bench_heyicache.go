@@ -11,9 +11,8 @@ type TestHeyiCache struct {
 // NewTestHeyiCache 创建一个新的 TestHeyiCache 实例
 func NewTestHeyiCache(cacheSizeMB int) *TestHeyiCache {
 	c, err := heyicache.NewCache(heyicache.Config{
-		Name:               "TestHeyiCache",
-		MaxSize:            int32(cacheSizeMB),
-		MaxSizeBeyondRatio: 0.1,
+		Name:    "TestHeyiCache",
+		MaxSize: int64(cacheSizeMB),
 	})
 	if err != nil {
 		panic(err)
@@ -25,7 +24,7 @@ func NewTestHeyiCache(cacheSizeMB int) *TestHeyiCache {
 
 // Get 实现 TestCacheIfc.Get 方法
 func (f *TestHeyiCache) Get(lease *heyicache.Lease, key string) (*TestStruct, bool) {
-	data, err := f.Cache.Get(lease, StringToByte(key), HeyiCacheFnGetTestStruct)
+	data, err := f.Cache.Get(lease, StringToByte(key), HeyiCacheFnTestStructIfc_)
 	if err != nil || data == nil {
 		return nil, false
 	}
@@ -35,7 +34,7 @@ func (f *TestHeyiCache) Get(lease *heyicache.Lease, key string) (*TestStruct, bo
 
 // Set 实现 TestCacheIfc.Set 方法
 func (f *TestHeyiCache) Set(key string, value *TestStruct) error {
-	return f.Cache.Set(StringToByte(key), value, HeyiCacheFnSetTestStruct, HeyiCacheFnSizeTestStruct, 0)
+	return f.Cache.Set(StringToByte(key), value, HeyiCacheFnTestStructIfc_, 0)
 }
 
 // func HeyiCacheFnGetTestStruct(data []byte) interface{} {
